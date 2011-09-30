@@ -3,7 +3,7 @@ from functools import partial
 ## our engine which is actually going to track
 ## the tuples
 
-class TupleEngine(self):
+class TupleEngine(object):
     def __init__(self):
         # lookup of handlers waiting for a tuple
         # the key is the pattern and the value is
