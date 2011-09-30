@@ -49,7 +49,7 @@ class TupleHandler(object):
             return found
         return None
 
-    def read(self):
+    def read(self,t):
         return self.engine.read(t)
 
     def read_wait(self):
@@ -144,17 +144,21 @@ class TCPTupleHandler(asynchat.async_chat,TupleHandler):
 
     def handle_request(self):
         # call the action from our base class
+        log.debug('handling request %s' % self.action)
         found = getattr(self, self.action)(self.tuple_filter)
 
         # yay we didn't even have to wait !
         if found:
             self.handle_tuple_found(found)
-
+        elif self.action == 'put':
+            log.debug('was put, returing')
+            self.push('FOUND%s' % TERMINATOR)
         elif not self.wait:
             self.push('NOT_FOUND%s' % TERMINATOR)
 
     def handle_tuple_found(self, t):
         # yay we found it!
+        log.debug('found tuple!')
         d = self.encode_tuple(t)
         self.push('FOUND %s%s%s%s' % (len(d),TERMINATOR,
                                       d,TERMINATOR))

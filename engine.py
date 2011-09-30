@@ -1,4 +1,6 @@
 from functools import partial
+import logging
+log = logging.getLogger()
 
 ## our engine which is actually going to track
 ## the tuples
@@ -47,7 +49,7 @@ class TupleEngine(object):
 
         return None
 
-    def read(self,t,wait_callback):
+    def read(self,t,wait_callback=None):
         # check for a matching tuple to the passed one
         # reads dont remove the tuple, just get it
         found = self.match_pattern(t)

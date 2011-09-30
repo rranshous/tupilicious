@@ -59,6 +59,7 @@ class TCPTupleClient(object):
         r = s.recv(6).strip() # we consume the space .. maybe
         log.debug('initial response: %s' % r)
 
+
         # is it found ?!
         if r.lower() != 'found':
             log.debug('not found')
@@ -67,10 +68,14 @@ class TCPTupleClient(object):
             s.recv(7)
             return None
 
+        # if it's a put, we're done
+        if action.lower() == 'put':
+            return True
+
         # much excitement! lets read how much data we get
         # read until returns
         buff = ''
-        while not data.endswith(TERMINATOR):
+        while not buff.endswith(TERMINATOR):
             buff += s.recv(1)
         data_len = int(buff[:len(TERMINATOR)])
         log.debug('data len: %s' % data_len)
@@ -84,7 +89,7 @@ class TCPTupleClient(object):
 
         # get our tuple
         found_tuple = self.decode_tuple_data(tuple_data)
-        log.debug('found tuple: %s' % found_tuple)
+        log.debug('found tuple: ' + str(found_tuple))
         return found_tuple
 
     def __getattr__(self,a,*args):
