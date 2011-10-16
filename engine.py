@@ -1,5 +1,6 @@
 from functools import partial
 import logging
+import collections
 log = logging.getLogger()
 
 ## our engine which is actually going to track
@@ -10,7 +11,7 @@ class TupleEngine(object):
         # lookup of handlers waiting for a tuple
         # the key is the pattern and the value is
         # the callback
-        self.waiting = {}
+        self.waiting = collections.orderedDict()
 
         # lookup of our tuples. the key is the tuple
         # the value is the # of these tuples we currently have
@@ -22,6 +23,18 @@ class TupleEngine(object):
             self.store[t] = 0
         else:
             self.store[t] += 1
+
+        # see if we can fulfill any waiting requests
+        self.try_fulfill_wait()
+
+    def try_fulfill_wait(self):
+        # we've received a new tuple, can we make someone's day?
+        for t in self.waiting.iterkeys():
+            found = self.match_pattern(t)
+            if found:
+                callback = self.waiting[t].popleft()
+                self._remove_tuple(found)
+                callback(found)
 
     def get(self,t,wait_callback=None):
         # they want to know if their pattern matches
@@ -41,9 +54,10 @@ class TupleEngine(object):
         elif wait_callback:
             # we want to setup the callback such that
             # it removes the tuple and the callback
-            self.waiting.setdefault(t,[]).append(partial(self,_found_callback,
-                                                         t,wait_callback,
-                                                         get=True))
+            q = collections.deque()
+            self.waiting.setdefault(t,q).append(partial(self,_found_callback,
+                                                        t,wait_callback,
+                                                        get=True))
             return None
 
 
@@ -60,7 +74,8 @@ class TupleEngine(object):
         elif wait_callback:
             # we want to setup the callback such that
             # it removes the tuple and the callback
-            self.waiting.setdefault(t,[]).append(partial(self,_found_callback,
+            q = collection.deque()
+            self.waiting.setdefault(t,q).append(partial(self,_found_callback,
                                                          t,wait_callback))
             return None
         return None
