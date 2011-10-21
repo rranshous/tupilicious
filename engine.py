@@ -20,9 +20,11 @@ class TupleEngine(object):
 
     def put(self,t):
         # a new tuple is being added
-        if not t in self.store:
+        if t not in self.store:
+            log.debug('adding new tuple: %s' % str(t))
             self.store[t] = 0
         else:
+            log.debug('incrementing tuple count: %s' % str(t))
             self.store[t] += 1
 
         # see if we can fulfill any waiting requests
@@ -33,8 +35,18 @@ class TupleEngine(object):
         for t in self.waiting.iterkeys():
             found = self.match_pattern(t)
             if found:
-                callback = self.waiting[t].popleft()
-                self._remove_tuple(found)
+                try:
+                    callback = self.waiting[t].popleft()
+                except IndexError:
+                    # there are no callbacks waiting, lets remove
+                    # the key so this doesn't happen again
+                    del self.waiting[t]
+
+                # if there are no callbacks, remove the key
+                if t in self.waiting and len(self.waiting[t]) == 0:
+                    del self.waiting[t]
+
+                # the callback will remove the key
                 callback(found)
 
     def get(self,t,wait_callback=None):
@@ -56,9 +68,8 @@ class TupleEngine(object):
             # we want to setup the callback such that
             # it removes the tuple and the callback
             q = collections.deque()
-            self.waiting.setdefault(t,q).append(partial(self,_found_callback,
-                                                        t,wait_callback,
-                                                        get=True))
+            c = partial(self._found_callback,t,wait_callback,get=True)
+            self.waiting.setdefault(t,q).append(c)
             return None
 
 
@@ -76,8 +87,8 @@ class TupleEngine(object):
             # we want to setup the callback such that
             # it removes the tuple and the callback
             q = collection.deque()
-            self.waiting.setdefault(t,q).append(partial(self,_found_callback,
-                                                         t,wait_callback))
+            c = partial(self._found_callback,t,wait_callback)
+            self.waiting.setdefault(t,q).append(c)
             return None
         return None
 
@@ -85,7 +96,7 @@ class TupleEngine(object):
         # someone was waiting for a tuple, and now it's here
         # remove the found tuple from our store if it's a get
         if get:
-            self.remove_tuple(f)
+            self._remove_tuple(f)
 
         # call the callback giving it the tuple
         callback(f)

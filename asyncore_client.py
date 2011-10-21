@@ -217,4 +217,5 @@ if __name__ == '__main__':
     ac.read(('test',None),print_response)
     ac.get(('test',None),print_response)
     ac.get(('test',None),print_response)
+    ac.get_wait(('test',None),print_response)
     asyncore.loop()
