@@ -22,6 +22,7 @@ import pickle
 import socket
 import logging
 import sys
+from helpers import decode_tuple_data, encode_tuple
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -49,7 +50,7 @@ class TCPTupleClient(object):
         s = self.get_socket()
 
         # send our request
-        d = self.encode_tuple(t)
+        d = encode_tuple(t)
         s.send('%s %s%s%s%s' % (action.upper(), len(d),
                                 TERMINATOR, d, TERMINATOR))
 
@@ -88,7 +89,7 @@ class TCPTupleClient(object):
         s.recv(2)
 
         # get our tuple
-        found_tuple = self.decode_tuple_data(tuple_data)
+        found_tuple = decode_tuple_data(tuple_data)
         log.debug('found tuple: ' + str(found_tuple))
         return found_tuple
 
@@ -105,9 +106,3 @@ class TCPTupleClient(object):
 
         # ::shrug::
         return super(TCPTupleClient,self).__getattr__(a,*args)
-
-    def decode_tuple_data(self, data):
-        return pickle.loads(data)
-
-    def encode_tuple(self, t):
-        return pickle.dumps(t)

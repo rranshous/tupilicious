@@ -20,11 +20,11 @@
 # the server is going to have to be setup in such as way that it can alert
 # the "waiting" connections when a new tuple gets added that matches
 
-import pickle
 import asyncore, asynchat
 import sys
 import socket
 import logging
+from helpers import decode_tuple_data, encode_tuple
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -89,7 +89,7 @@ class TCPTupleHandler(asynchat.async_chat,TupleHandler):
         self.tuple_filter = None
 
     def collect_incoming_data(self, data):
-        log.debug('got data: %s' % data)
+        #log.debug('got data: %s' % data)
         self.data += data
 
     def found_terminator(self):
@@ -132,12 +132,12 @@ class TCPTupleHandler(asynchat.async_chat,TupleHandler):
 
     def parse_tuple(self):
         # see if we've collected enough data
-        log.debug('checking parsing tuple: %s' % self.data)
+        #log.debug('checking parsing tuple: %s' % self.data)
         if len(self.data) >= self.tuple_byte_size:
 
             # decode the rep of the tuple
             log.debug('parsing')
-            self.tuple_filter = (self.decode_tuple_data(self.data))
+            self.tuple_filter = decode_tuple_data(self.data)
 
             # get rid of our data now that we've used it
             self.data = ""
@@ -153,24 +153,21 @@ class TCPTupleHandler(asynchat.async_chat,TupleHandler):
         elif self.action == 'put':
             log.debug('was put, returing')
             self.push('FOUND%s' % TERMINATOR)
+            self.clean()
         elif not self.wait:
             self.push('NOT_FOUND%s' % TERMINATOR)
+            self.clean()
 
     def handle_tuple_found(self, t):
         # yay we found it!
         log.debug('found tuple!')
-        d = self.encode_tuple(t)
+        d = encode_tuple(t)
         self.push('FOUND %s%s%s%s' % (len(d),TERMINATOR,
                                       d,TERMINATOR))
 
         # clean up after ourself
         self.clean()
 
-    def decode_tuple_data(self, data):
-        return pickle.loads(data)
-
-    def encode_tuple(self, t):
-        return pickle.dumps(t)
 
     def clean(self):
         # we are assuming right now that requests are sent serially
@@ -180,9 +177,14 @@ class TCPTupleHandler(asynchat.async_chat,TupleHandler):
         self.wait = False
         self.action = None
         self.tuple_filter = None
+        self.data = ''
 
         # did not clear the data because we may have begun receiving
         # more data already
+
+    def handle_close(self):
+        log.debug('closing')
+        self.close()
 
 class TCPServer(asyncore.dispatcher):
     def __init__(self, port, engine):

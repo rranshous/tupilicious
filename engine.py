@@ -1,6 +1,7 @@
 from functools import partial
 import logging
 import collections
+import ordereddict
 log = logging.getLogger()
 
 ## our engine which is actually going to track
@@ -11,7 +12,7 @@ class TupleEngine(object):
         # lookup of handlers waiting for a tuple
         # the key is the pattern and the value is
         # the callback
-        self.waiting = collections.orderedDict()
+        self.waiting = ordereddict.OrderedDict()
 
         # lookup of our tuples. the key is the tuple
         # the value is the # of these tuples we currently have
