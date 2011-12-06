@@ -185,9 +185,21 @@ class AsyncClient(object):
         self.host = host
         self.port = port
         self.request_handler = TupiliciousHandler(self.host,self.port)
+        self.request_handlers = []
 
     def make_request(self, action, t, callback=None):
-        self.request_handler.make_request(action,t,callback)
+        # if we don't have any request handlers which aren't mid request
+        # fire up another
+        found = None
+        for rh in self.request_handlers:
+            if not rh.mid_request:
+                found = rh
+        # TODO: cleanup extra request handlers
+        if not found:
+            request_handler = TupiliciousHandler(self.host,self.port)
+            self.request_handlers.append(request_handler)
+            found = request_handler
+        found.make_request(action,t,callback)
 
     def __getattr__(self,a,*args):
         # instead of putting a function for each api method
