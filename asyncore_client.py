@@ -201,6 +201,16 @@ class AsyncClient(object):
             found = request_handler
         found.make_request(action,t,callback)
 
+        # cleanup request handlers
+        to_close = []
+        for rh in self.request_handlers:
+            if not rh.mid_request and not self.requests:
+                to_close.append(rh)
+        for rh in to_close:
+            print 'removing rh'
+            rh.close()
+            self.request_handlers.remove(rh)
+
     def __getattr__(self,a,*args):
         # instead of putting a function for each api method
         # we are cheating and simply sticking ourself into the
