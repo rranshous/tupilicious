@@ -11,6 +11,7 @@ from functools import partial
 import asynchat, asyncore
 import sys
 import socket
+import random
 import logging
 from collections import deque
 from helpers import decode_tuple_data, encode_tuple
@@ -146,6 +147,7 @@ class TupiliciousHandler(asynchat.async_chat):
         try:
             action, t, callback = self.requests.popleft()
         except IndexError:
+            log.debug('TupiliciousHandler: no push, no requests')
             # empty, no go
             return False
 
@@ -186,6 +188,7 @@ class AsyncClient(object):
         self.port = port
         self.request_handler = TupiliciousHandler(self.host,self.port)
         self.request_handlers = []
+        self.max_handlers = 50
 
     def make_request(self, action, t, callback=None):
         # if we don't have any request handlers which aren't mid request
@@ -194,22 +197,30 @@ class AsyncClient(object):
         for rh in self.request_handlers:
             if not rh.mid_request:
                 found = rh
-        # TODO: cleanup extra request handlers
-        if not found:
+
+        if not found and len(self.request_handlers) < self.max_handlers:
+            print 'creating new request handler'
             request_handler = TupiliciousHandler(self.host,self.port)
             self.request_handlers.append(request_handler)
             found = request_handler
+        elif not found:
+            print 'max handlers'
+            found = random.sample(self.request_handlers,1)[0]
+
+        print 'making request'
         found.make_request(action,t,callback)
 
         # cleanup request handlers
+        """
         to_close = []
         for rh in self.request_handlers:
-            if not rh.mid_request and not self.requests:
+            if not rh.mid_request and len(rh.requests) == 0:
                 to_close.append(rh)
         for rh in to_close:
             print 'removing rh'
             rh.close()
             self.request_handlers.remove(rh)
+        """
 
     def __getattr__(self,a,*args):
         # instead of putting a function for each api method
@@ -221,9 +232,8 @@ class AsyncClient(object):
             # return a function which calls make request
             # w/ the command we want
             return partial(self.make_request,a)
+        raise AttributeError
 
-        # ::shrug::
-        return super(TCPTupleClient,self).__getattr__(a,*args)
 
 def print_response(r):
     log.debug('response: %s',str(r))
