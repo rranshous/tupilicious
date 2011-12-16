@@ -184,12 +184,12 @@ class TupiliciousHandler(asynchat.async_chat):
 
 
 class AsyncClient(object):
-    def __init__(self, host, port):
+    def __init__(self, host, port, max_handlers=10):
         self.host = host
         self.port = port
         self.request_handler = TupiliciousHandler(self.host,self.port)
         self.request_handlers = []
-        self.max_handlers = 1
+        self.max_handlers = max_handlers
 
     def make_request(self, action, t, callback=None):
         # if we don't have any request handlers which aren't mid request
