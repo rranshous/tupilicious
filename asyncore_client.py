@@ -166,6 +166,7 @@ class TupiliciousHandler(asynchat.async_chat):
         # the protocol handler found a response for us
         # push  it to the callback
         if callback:
+            print 'pushing response to callback: %s' % callback
             callback(response)
 
     def push_request(self, action, t):
@@ -188,14 +189,14 @@ class AsyncClient(object):
         self.port = port
         self.request_handler = TupiliciousHandler(self.host,self.port)
         self.request_handlers = []
-        self.max_handlers = 50
+        self.max_handlers = 1
 
     def make_request(self, action, t, callback=None):
         # if we don't have any request handlers which aren't mid request
         # fire up another
         found = None
         for rh in self.request_handlers:
-            if not rh.mid_request:
+            if not rh.mid_request and not len(rh.requests):
                 found = rh
 
         if not found and len(self.request_handlers) < self.max_handlers:
@@ -203,9 +204,16 @@ class AsyncClient(object):
             request_handler = TupiliciousHandler(self.host,self.port)
             self.request_handlers.append(request_handler)
             found = request_handler
+
         elif not found:
             print 'max handlers'
-            found = random.sample(self.request_handlers,1)[0]
+            # find the handler w/ the leset number of requests
+            smallest = self.request_handlers[0]
+            for handler in self.request_handlers:
+                if len(handler.requests) < len(smallest.requests):
+                    smallest = handler
+            print 'smallest len: %s' % len(smallest.requests)
+            found = smallest
 
         print 'making request'
         found.make_request(action,t,callback)
