@@ -2,7 +2,13 @@ from functools import partial
 import logging
 import collections
 import ordereddict
+from decorator import decorator
 log = logging.getLogger()
+
+@decorator
+def print_state(f,obj,*args,**kwargs):
+    print '%s: %s' % (f.__name__,len(obj.store))
+    return f(obj,*args,**kwargs)
 
 ## our engine which is actually going to track
 ## the tuples
@@ -18,6 +24,7 @@ class TupleEngine(object):
         # the value is the # of these tuples we currently have
         self.store = {}
 
+    @print_state
     def put(self,t):
         # a new tuple is being added
         if t not in self.store:
@@ -30,6 +37,7 @@ class TupleEngine(object):
         # see if we can fulfill any waiting requests
         self.try_fulfill_wait()
 
+    @print_state
     def try_fulfill_wait(self):
         # we've received a new tuple, can we make someone's day?
         for t in self.waiting.iterkeys():
@@ -49,6 +57,7 @@ class TupleEngine(object):
                 # the callback will remove the key
                 callback(found)
 
+    @print_state
     def get(self,t,wait_callback=None):
         # they want to know if their pattern matches
         # if it does we are going to return the matching
@@ -75,6 +84,7 @@ class TupleEngine(object):
 
         return None
 
+    @print_state
     def read(self,t,wait_callback=None):
         # check for a matching tuple to the passed one
         # reads dont remove the tuple, just get it
