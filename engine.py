@@ -15,14 +15,20 @@ def print_state(f,obj,*args,**kwargs):
 
 class TupleEngine(object):
     def __init__(self):
+        # top lvl of waiting is the len of the tuple
         # lookup of handlers waiting for a tuple
         # the key is the pattern and the value is
         # the callback
-        self.waiting = ordereddict.OrderedDict()
+        self.waiting = {}
 
         # lookup of our tuples. the key is the tuple
         # the value is the # of these tuples we currently have
         self.store = {}
+
+    def _get_waiting_lookup(self, t):
+        l = len(t)
+        lookup = self.waiting.get(l).setdefault(l,ordereddict.OrderedDict())
+        return lookup
 
     @print_state
     def put(self,t):
@@ -40,19 +46,20 @@ class TupleEngine(object):
     @print_state
     def try_fulfill_wait(self):
         # we've received a new tuple, can we make someone's day?
-        for t in self.waiting.iterkeys():
+        lookup = self._get_waiting_lookup(t)
+        for t in lookup.iterkeys():
             found = self.match_pattern(t)
             if found:
                 try:
-                    callback = self.waiting[t].popleft()
+                    callback = lookup.get(t).popleft()
                 except IndexError:
                     # there are no callbacks waiting, lets remove
                     # the key so this doesn't happen again
-                    del self.waiting[t]
+                    del lookup[t]
 
                 # if there are no callbacks, remove the key
-                if t in self.waiting and len(self.waiting[t]) == 0:
-                    del self.waiting[t]
+                if t in lookup and len(lookup[t]) == 0:
+                    del lookup[t]
 
                 # the callback will remove the key
                 callback(found)
@@ -78,7 +85,8 @@ class TupleEngine(object):
             # it removes the tuple and the callback
             q = collections.deque()
             c = partial(self._found_callback,t,wait_callback,get=True)
-            self.waiting.setdefault(t,q).append(c)
+            lookup = self._get_waiting_lookup(t)
+            lookup.setdefault(t,q).append(c)
             return None
 
 
@@ -98,7 +106,8 @@ class TupleEngine(object):
             # it removes the tuple and the callback
             q = collection.deque()
             c = partial(self._found_callback,t,wait_callback)
-            self.waiting.setdefault(t,q).append(c)
+            lookup = self._get_waiting_lookup(t)
+            lookup.setdefault(t,q).append(c)
             return None
         return None
 
